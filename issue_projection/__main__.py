@@ -102,26 +102,29 @@ class MainHandler(tornado.web.RequestHandler):
 class PayloadHandler(tornado.web.RequestHandler):
 
     def post(self):
-        headers = self.request.headers
-        event = headers.get('X-GitHub-Event', None)
-        logging.info(event)
-        if event == 'issues':
-            payload = tornado.escape.json_decode(self.request.body)
-            action = payload['action']
-            logging.info(action)
-            if action == 'labeled':
-                log_labeled_issue(payload)
-                repo_owner = payload['repository']['owner']['login']
-                repo_name = payload['repository']['name']
-                issue = payload['issue']
-                label = 'bug'
-                project = get_projects(repo_owner, repo_name, label=label)
-                columns = get_project_columns(project)
-                column, = [ column for column in columns
-                           if column['name'].lower() == 'backlog']
-                issues = filter_columns_issues(columns, [issue])
-                post_project_column_cards(column, issues)
-
+        try:
+            headers = self.request.headers
+            event = headers.get('X-GitHub-Event', None)
+            logging.info(event)
+            if event == 'issues':
+                payload = tornado.escape.json_decode(self.request.body)
+                action = payload['action']
+                logging.info(action)
+                if action == 'labeled':
+                    log_labeled_issue(payload)
+                    repo_owner = payload['repository']['owner']['login']
+                    repo_name = payload['repository']['name']
+                    issue = payload['issue']
+                    label = 'bug'
+                    project = get_projects(repo_owner, repo_name, label=label)
+                    columns = get_project_columns(project)
+                    column, = [ column for column in columns
+                               if column['name'].lower() == 'backlog']
+                    issues = filter_columns_issues(columns, [issue])
+                    post_project_column_cards(column, issues)
+        except Exception as e:
+            logging.error(e.message)
+            raise
 
 def main():
     application = tornado.web.Application([
