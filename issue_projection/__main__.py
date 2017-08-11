@@ -33,6 +33,15 @@ def post_content(target, json, accept=None):
     content = response.json()
     return content
 
+def delete_content(target, accept=None):
+    if accept is None:
+        accept = 'application/vnd.github.v3+json'
+    headers = {'Accept': accept, 'Authorization': 'token {}'.format(API_TOKEN)}
+    response = requests.delete('{}{}'.format(URL, target), headers=headers)
+    response.raise_for_status()
+    content = response.json()
+    return content
+
 def get_projects(user, repo, label=None):
     target = '/repos/{}/{}/projects'.format(user, repo)
     projects = get_content(target, accept='application/vnd.github.inertia-preview+json')
@@ -81,6 +90,12 @@ def post_project_column_cards(column, issues):
         response = post_content(target, json, accept='application/vnd.github.inertia-preview+json')
 
 
+def delete_project_card(card):
+    target = '/projects/columns/cards/{}'.format(card['id'])
+    response = delete_content(target,
+                              accept='application/vnd.github.inertia-preview+json')
+
+
 def filter_columns_issues(columns, issues):
     urls = get_columns_issue_urls(columns)
     result = []
@@ -90,7 +105,7 @@ def filter_columns_issues(columns, issues):
     return result
 
 
-def log_labeled_issue(event, payload):
+def log_labeled_issue(event, action, payload):
     index = 'issue' if event == 'issues' else 'pull_request'
     user = payload['sender']['login']
     issue_number = payload[index]['number']
@@ -98,9 +113,9 @@ def log_labeled_issue(event, payload):
     timestamp = payload[index]['updated_at']
     label= payload['label']['name']
     logging.info(
-        '{user} labeled {index} #{number} with label {label} '\
-        'at {timestamp}.'.format(user=user, number=issue_number, index=index,
-                                 title=issue_title, label=label,
+        '{user} {action} {index} #{number} with label {label} '\
+        'at {timestamp}.'.format(user=user, action=action, number=issue_number,
+                                 index=index, label=label,
                                  timestamp=timestamp))
 
 
@@ -123,8 +138,8 @@ class PayloadHandler(tornado.web.RequestHandler):
                 logging.info(action)
                 label = 'bug'
                 issue_label = payload['label']['name']
-                if action == 'labeled' and issue_label == label:
-                    log_labeled_issue(event, payload)
+                if action in ('labeled', 'unlabeled') and issue_label == label:
+                    log_labeled_issue(event, action, payload)
                     repo_owner = payload['repository']['owner']['login']
                     repo_name = payload['repository']['name']
                     if event == 'pull_request':
@@ -134,10 +149,22 @@ class PayloadHandler(tornado.web.RequestHandler):
                         issue = payload['issue']
                     project = get_projects(repo_owner, repo_name, label=label)
                     columns = get_project_columns(project)
-                    column, = [column for column in columns
-                               if column['name'].lower() == 'backlog']
-                    issues = filter_columns_issues(columns, [issue])
-                    post_project_column_cards(column, issues)
+                    if action == 'labeled':
+                        column, = [column for column in columns
+                                   if column['name'].lower() == 'backlog']
+                        issues = filter_columns_issues(columns, [issue])
+                        post_project_column_cards(column, issues)
+                    else:
+                        issue_url = issue['url']
+                        for column in columns:
+                            cards = get_project_column_cards(column)
+                            for card in cards:
+                                if card['content_url'] == issue_url:
+                                    delete_project_card(card)
+                                    break
+
+
+
         except Exception as e:
             logging.error(str(e))
             raise
