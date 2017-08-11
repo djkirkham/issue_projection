@@ -109,11 +109,12 @@ class PayloadHandler(tornado.web.RequestHandler):
             logging.info(event)
             payload = tornado.escape.json_decode(self.request.body)
             logging.info(payload)
-            if event == 'issues':
+            if event in ('issues', 'pull_request'):
                 action = payload['action']
                 logging.info(action)
                 label = 'bug'
-                if action == 'labeled':
+                issue_label = payload['label']['name']
+                if action == 'labeled' and issue_label == label:
                     log_labeled_issue(payload)
                     repo_owner = payload['repository']['owner']['login']
                     repo_name = payload['repository']['name']
