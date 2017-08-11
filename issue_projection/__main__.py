@@ -163,11 +163,6 @@ class PayloadHandler(tornado.web.RequestHandler):
                     log_labeled_issue(event, action, payload)
                     repo_owner = payload['repository']['owner']['login']
                     repo_name = payload['repository']['name']
-                    if event == 'pull_request':
-                        number = payload['number']
-                        issue = get_issue(repo_owner, repo_name, number)
-                    else:
-                        issue = payload['issue']
                     project = get_projects(repo_owner, repo_name, label=label)
                     if project is None:
                         if action == 'labeled':
@@ -175,6 +170,11 @@ class PayloadHandler(tornado.web.RequestHandler):
                         else:
                             # goto :end
                             return
+                    if event == 'pull_request':
+                        number = payload['number']
+                        issue = get_issue(repo_owner, repo_name, number)
+                    else:
+                        issue = payload['issue']
                     columns = get_project_columns(project)
                     if action == 'labeled':
                         column, = [column for column in columns
