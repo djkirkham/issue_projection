@@ -107,16 +107,17 @@ class PayloadHandler(tornado.web.RequestHandler):
             headers = self.request.headers
             event = headers.get('X-GitHub-Event', None)
             logging.info(event)
+            payload = tornado.escape.json_decode(self.request.body)
+            logging.info(payload)
             if event == 'issues':
-                payload = tornado.escape.json_decode(self.request.body)
                 action = payload['action']
                 logging.info(action)
+                label = 'bug'
                 if action == 'labeled':
                     log_labeled_issue(payload)
                     repo_owner = payload['repository']['owner']['login']
                     repo_name = payload['repository']['name']
                     issue = payload['issue']
-                    label = 'bug'
                     project = get_projects(repo_owner, repo_name, label=label)
                     columns = get_project_columns(project)
                     column, = [ column for column in columns
