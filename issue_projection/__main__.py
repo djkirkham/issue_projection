@@ -82,15 +82,15 @@ def filter_columns_issues(columns, issues):
     return result
 
 
-def log_labeled_issue(payload):
+def log_labeled_issue(index, payload):
     user = payload['sender']['login']
-    issue_number = payload['issue']['number']
-    issue_title = payload['issue']['title']
-    timestamp = payload['issue']['updated_at']
+    issue_number = payload[index]['number']
+    issue_title = payload[index]['title']
+    timestamp = payload[index]['updated_at']
     label= payload['label']['name']
     logging.info(
-        '{user} labeled issue #{number} with label {label} '\
-        'at {timestamp}.'.format(user=user, number=issue_number,
+        '{user} labeled {index} #{number} with label {label} '\
+        'at {timestamp}.'.format(user=user, number=issue_number, index=index,
                                  title=issue_title, label=label,
                                  timestamp=timestamp))
 
@@ -116,13 +116,13 @@ class PayloadHandler(tornado.web.RequestHandler):
                 label = 'bug'
                 issue_label = payload['label']['name']
                 if action == 'labeled' and issue_label == label:
-                    log_labeled_issue(payload)
+                    log_labeled_issue(index, payload)
                     repo_owner = payload['repository']['owner']['login']
                     repo_name = payload['repository']['name']
                     issue = payload[index]
                     project = get_projects(repo_owner, repo_name, label=label)
                     columns = get_project_columns(project)
-                    column, = [ column for column in columns
+                    column, = [column for column in columns
                                if column['name'].lower() == 'backlog']
                     issues = filter_columns_issues(columns, [issue])
                     post_project_column_cards(column, issues)
