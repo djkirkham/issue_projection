@@ -87,10 +87,11 @@ def log_labeled_issue(payload):
     issue_number = payload['issue']['number']
     issue_title = payload['issue']['title']
     timestamp = payload['issue']['updated_at']
+    label= payload['label']['name']
     logging.info(
         '{user} labeled issue #{number} with label {label} '\
         'at {timestamp}.'.format(user=user, number=issue_number,
-                                 title=issue_title,
+                                 title=issue_title, label=label,
                                  timestamp=timestamp))
 
 
@@ -123,7 +124,7 @@ class PayloadHandler(tornado.web.RequestHandler):
                     issues = filter_columns_issues(columns, [issue])
                     post_project_column_cards(column, issues)
         except Exception as e:
-            logging.error(e.message)
+            logging.error(str(e))
             raise
 
 def main():
