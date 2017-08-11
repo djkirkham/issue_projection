@@ -21,7 +21,7 @@ class PayloadHandler(tornado.web.RequestHandler):
     def post(self):
         headers = self.request.headers
         event = headers.get('X-GitHub-Event', None)
-        print(event)
+        logging.info(event)
         if event == 'issues':
             payload = tornado.escape.json_decode(self.request.body)
             user = payload['sender']['login']
@@ -29,7 +29,7 @@ class PayloadHandler(tornado.web.RequestHandler):
             issue_number = payload['issue']['number']
             issue_title = payload['issue']['title']
             timestamp = payload['issue']['updated_at']
-            print('{user} {action} issue #{number} "{title}" at {timestamp}.'
+            logging.info('{user} {action} issue #{number} "{title}" at {timestamp}.'
                     .format(user=user, action=action, number=issue_number,
                             title=issue_title, timestamp=timestamp))
 
@@ -46,3 +46,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
