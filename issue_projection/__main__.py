@@ -69,6 +69,7 @@ def get_project_column_cards(column):
 def post_project_column_cards(column, issues):
     target = '/projects/columns/{}/cards'.format(column['id'])
     for issue in issues:
+        logging.info(issue)
         json = {'content_id': issue['id'], 'content_type': 'Issue'}
         response = post_content(target, json, accept='application/vnd.github.inertia-preview+json')
 
