@@ -45,6 +45,7 @@ def delete_content(target, accept=None):
 def get_projects(user, repo, label=None):
     target = '/repos/{}/{}/projects'.format(user, repo)
     projects = get_content(target, accept='application/vnd.github.inertia-preview+json')
+    result = None
     if label is not None:
         name = '{} project'.format(label.lower())
         for project in projects:
@@ -105,6 +106,26 @@ def filter_columns_issues(columns, issues):
     return result
 
 
+def post_create_project_column(project_id, name):
+    target = '/projects/{}/columns'.format(project_id)
+    json = {'name': name}
+    post_content(target, json, accept='application/vnd.github.inertia-preview+json')
+
+
+
+def post_create_project(user, repo, label):
+    name = '{} Project'.format(label.capitalize())
+    target = '/repos/{}/{}/projects'.format(user, repo)
+    json = {'name': name, 'body': 'Project for {} issues'.format(label)}
+    project = post_content(target, json, accept='application/vnd.github.inertia-preview+json')
+
+    for name in ('Backlog', 'In Progress', 'For Review', 'In Review', 'Done'):
+        post_create_project_column(project['id'], name)
+
+
+    return project
+
+
 def log_labeled_issue(event, action, payload):
     index = 'issue' if event == 'issues' else 'pull_request'
     user = payload['sender']['login']
@@ -148,6 +169,12 @@ class PayloadHandler(tornado.web.RequestHandler):
                     else:
                         issue = payload['issue']
                     project = get_projects(repo_owner, repo_name, label=label)
+                    if project is None:
+                        if action == 'labeled':
+                            project = post_create_project(repo_owner, repo_name, label)
+                        else:
+                            # goto :end
+                            return
                     columns = get_project_columns(project)
                     if action == 'labeled':
                         column, = [column for column in columns
